@@ -7,10 +7,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type localMessageBus struct {
-	sync.RWMutex
-	subs   map[string]*localSubList
-	queues map[string]*localSubList
+type localMessageBus struct { // localMessageBus is a MessageBus implementation that uses channels to send messages.
+	sync.RWMutex // RWMutex is used to lock the localMessageBus while holding the localSubList lock is allowed
+	subs         map[string]*localSubList
+	queues       map[string]*localSubList
 }
 
 func NewLocalMessageBus() MessageBus {
