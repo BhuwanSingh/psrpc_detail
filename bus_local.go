@@ -8,28 +8,29 @@ import (
 )
 
 type localMessageBus struct { // localMessageBus is a MessageBus implementation that uses channels to send messages.
-	sync.RWMutex // RWMutex is used to lock the localMessageBus while holding the localSubList lock is allowed
-	subs         map[string]*localSubList
-	queues       map[string]*localSubList
+	sync.RWMutex                          // RWMutex is used to lock the localMessageBus while holding the localSubList lock is allowed
+	subs         map[string]*localSubList // subs is a map of channel name to a list of subscribers
+	queues       map[string]*localSubList // queues is a map of channel name to a list of queue subscribers
+	// localSubList is a list of subscribers to a channel.
 }
 
-func NewLocalMessageBus() MessageBus {
+func NewLocalMessageBus() MessageBus { // NewLocalMessageBus creates a new localMessageBus.
 	return &localMessageBus{
-		subs:   make(map[string]*localSubList),
+		subs:   make(map[string]*localSubList), // initialize subs and queues
 		queues: make(map[string]*localSubList),
 	}
 }
 
-func (l *localMessageBus) Publish(_ context.Context, channel string, msg proto.Message) error {
-	b, err := serialize(msg)
+func (l *localMessageBus) Publish(_ context.Context, channel string, msg proto.Message) error { // Publish publishes a message to a channel.
+	b, err := serialize(msg) // serialize is a function that serializes a proto.Message to a byte slice.
 	if err != nil {
 		return err
 	}
 
-	l.RLock()
-	subs := l.subs[channel]
-	queues := l.queues[channel]
-	l.RUnlock()
+	l.RLock()                   // lock localMessageBus before localSubList
+	subs := l.subs[channel]     // get the list of subscribers to the channel
+	queues := l.queues[channel] // get the list of queue subscribers to the channel
+	l.RUnlock()                 // unlock localMessageBus after localSubList
 
 	if subs != nil {
 		subs.publish(b)
