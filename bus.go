@@ -1,3 +1,5 @@
+// bus.go - This file contains the implementation of the MessageBus interface.
+
 package psrpc
 
 import (

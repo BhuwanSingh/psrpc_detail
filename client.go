@@ -12,6 +12,11 @@ import (
 	"github.com/livekit/psrpc/internal"
 )
 
+// The below code is defining several error variables in Go, each with a specific error message and
+// error code. These errors are related to network requests and streaming, and include errors for
+// canceled requests, timed out requests, no response from servers, end of stream, closed stream, and
+// slow consumer. The errors are created using the NewError function, which takes an error code and an
+// error message as arguments.
 var (
 	ErrRequestCanceled = NewError(Canceled, errors.New("request canceled"))
 	ErrRequestTimedOut = NewError(DeadlineExceeded, errors.New("request timed out"))
