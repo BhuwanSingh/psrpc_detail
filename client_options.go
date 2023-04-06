@@ -1,3 +1,4 @@
+// This is a Go package that defines various client options for a remote procedure call (RPC) system.
 package psrpc
 
 import (

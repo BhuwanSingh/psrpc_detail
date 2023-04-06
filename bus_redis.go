@@ -1,3 +1,5 @@
+// The code defines a Redis message bus implementation with methods for publishing and subscribing to
+// channels, including queue mode with message locking.
 package psrpc
 
 import (

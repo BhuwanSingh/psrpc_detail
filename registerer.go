@@ -1,3 +1,5 @@
+// The code defines a Registerer struct and RegistererSlice type for registering and deregistering
+// functions using reflection in Go.
 package psrpc
 
 import "reflect"
