@@ -13,6 +13,11 @@ import (
 )
 
 func TestMessageBus(t *testing.T) {
+	// This is a test case for the `Local` message bus implementation. It creates a new instance of the
+	// `LocalMessageBus`, and then runs three tests: `testSubscribe`, `testSubscribeQueue`, and
+	// `testSubscribeClose`, passing the `bus` instance as a parameter to each of them. These tests verify
+	// the functionality of the `Subscribe`, `SubscribeQueue`, and `Close` methods of the
+	// `LocalMessageBus`.
 	t.Run("Local", func(t *testing.T) {
 		bus := NewLocalMessageBus()
 		testSubscribe(t, bus)
@@ -20,6 +25,11 @@ func TestMessageBus(t *testing.T) {
 		testSubscribeClose(t, bus)
 	})
 
+	// This code block is a test case for the Redis message bus implementation. It creates a Redis client
+	// using the `go-redis` library, creates a new instance of the `RedisMessageBus` using the client, and
+	// then runs three tests: `testSubscribe`, `testSubscribeQueue`, and `testSubscribeClose`, passing the
+	// `bus` instance as a parameter to each of them. These tests verify the functionality of the
+	// `Subscribe`, `SubscribeQueue`, and `Close` methods of the `RedisMessageBus`.
 	t.Run("Redis", func(t *testing.T) {
 		rc := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{"localhost:6379"}})
 		bus := NewRedisMessageBus(rc)
@@ -37,7 +47,11 @@ func TestMessageBus(t *testing.T) {
 	})
 }
 
+// The function tests subscribing to a message bus and publishing a message to a channel.
 func testSubscribe(t *testing.T, bus MessageBus) {
+	// `ctx := context.Background()` is creating a new empty context that can be used to pass cancellation
+	// signals and deadlines to functions that support it. In this code, it is used to pass the context to
+	// the `Subscribe` and `Publish` methods of the message bus implementations.
 	ctx := context.Background()
 
 	channel := newID()
