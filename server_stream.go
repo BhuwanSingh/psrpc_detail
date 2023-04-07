@@ -1,3 +1,4 @@
+// This is the implementation of a stream RPC handler for a PSRPC server in Go.
 package psrpc
 
 import (

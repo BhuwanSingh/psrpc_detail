@@ -1,3 +1,5 @@
+// The below code defines an RPC server in Go that allows for registering and deregistering handlers,
+// publishing messages, and closing the server.
 package psrpc
 
 import (

@@ -1,3 +1,6 @@
+// The below code defines a Go package for implementing a client for a remote procedure call (RPC)
+// system, including functions for making single and multi requests, joining and opening streams, and
+// handling errors.
 package psrpc
 
 import (
@@ -26,7 +29,13 @@ var (
 	ErrSlowConsumer    = NewError(Unavailable, errors.New("stream message discarded by slow consumer"))
 )
 
+// The function creates a new RPC client with specified options and subscribes to message channels for
+// responses, claim requests, and streams.
 func NewRPCClient(serviceName, clientID string, bus MessageBus, opts ...ClientOption) (*RPCClient, error) {
+	// The below code is creating a new instance of an RPCClient struct in the Go programming language.
+	// The struct has several fields including clientOpts, bus, serviceName, id, claimRequests,
+	// responseChannels, streamChannels, and closed. The values for some of these fields are being
+	// initialized using the make function to create maps and channels.
 	c := &RPCClient{
 		clientOpts:       getClientOpts(opts...),
 		bus:              bus,
@@ -38,22 +47,44 @@ func NewRPCClient(serviceName, clientID string, bus MessageBus, opts ...ClientOp
 		closed:           make(chan struct{}),
 	}
 
+	// The below code is creating a new context object with an empty context value. The context package in
+	// Go is used to manage cancellation signals, deadlines, and other request-scoped values across API
+	// boundaries and between processes. The `context.Background()` function returns an empty context that
+	// has no values associated with it.
 	ctx := context.Background()
+	// The below code is subscribing to a channel for receiving responses of type `*internal.Response`
+	// using the `Subscribe` function. The function takes in the context `ctx`, a message bus `c.bus`, the
+	// name of the response channel `getResponseChannel(serviceName, clientID)`, and the size of the
+	// channel `c.channelSize`. The function returns a channel of responses and an error if any.
 	responses, err := Subscribe[*internal.Response](
 		ctx, c.bus, getResponseChannel(serviceName, clientID), c.channelSize,
 	)
+	// The below code is checking if the variable `err` is not equal to `nil`. If `err` is not `nil`, it
+	// returns `nil` and the value of `err`. This is commonly used in Go to handle errors that may occur
+	// during the execution of a function.
 	if err != nil {
 		return nil, err
 	}
 
+	// The below code is subscribing to a channel that receives `ClaimRequest` messages. It is using the
+	// `Subscribe` function from the `internal` package to subscribe to the channel. The function takes in
+	// the context, the bus, the channel name, and the channel size as parameters. The
+	// `getClaimRequestChannel` function is used to generate the channel name based on the service name
+	// and client ID. The `Subscribe` function returns a channel of `ClaimRequest` messages and an error
+	// if there was an issue subscribing to the channel.
 	claims, err := Subscribe[*internal.ClaimRequest](
 		ctx, c.bus, getClaimRequestChannel(serviceName, clientID), c.channelSize,
 	)
+	// The code is checking if the error variable is not nil. If it is not nil, it closes the responses
+	// object and returns nil and the error.
 	if err != nil {
 		_ = responses.Close()
 		return nil, err
 	}
 
+	// The above code is declaring a variable named `streams` of type `Subscription` which is a generic
+	// type that takes a parameter of `*internal.Stream`. The `*` indicates that it is a pointer to a
+	// `Stream` object. The variable is initialized to an empty array of pointers to `Stream` objects.
 	var streams Subscription[*internal.Stream]
 	if c.enableStreams {
 		streams, err = Subscribe[*internal.Stream](

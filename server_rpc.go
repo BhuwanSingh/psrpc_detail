@@ -1,3 +1,6 @@
+// This is the implementation of an RPC handler for a PSRPC server in Go, which handles incoming
+// requests, claims them if required, calls the appropriate handler function, and sends back a
+// response.
 package psrpc
 
 import (
