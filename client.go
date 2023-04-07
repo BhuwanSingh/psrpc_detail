@@ -82,10 +82,15 @@ func NewRPCClient(serviceName, clientID string, bus MessageBus, opts ...ClientOp
 		return nil, err
 	}
 
-	// The above code is declaring a variable named `streams` of type `Subscription` which is a generic
+	// The below code is declaring a variable named `streams` of type `Subscription` which is a generic
 	// type that takes a parameter of `*internal.Stream`. The `*` indicates that it is a pointer to a
 	// `Stream` object. The variable is initialized to an empty array of pointers to `Stream` objects.
 	var streams Subscription[*internal.Stream]
+	// The below code is checking if the `enableStreams` flag is set to true. If it is true, it subscribes
+	// to a stream using the `Subscribe` function with the given context, bus, channel name, and channel
+	// size. If there is an error during subscription, it closes the `responses` and `claims` channels and
+	// returns the error. If the `enableStreams` flag is false, it sets the `streams` variable to an empty
+	// subscription of type `nilSubscription[*internal.Stream]`.
 	if c.enableStreams {
 		streams, err = Subscribe[*internal.Stream](
 			ctx, c.bus, getStreamChannel(serviceName, clientID), c.channelSize,
@@ -99,6 +104,11 @@ func NewRPCClient(serviceName, clientID string, bus MessageBus, opts ...ClientOp
 		streams = nilSubscription[*internal.Stream]{}
 	}
 
+	// The below code is defining a goroutine that listens to multiple channels using a select statement.
+	// It listens to the `closed` channel to close other channels and return when it receives a signal to
+	// close. It also listens to the `claims`, `responses`, and `streams` channels to receive messages and
+	// forward them to the appropriate channels based on their request or stream IDs. The code is likely
+	// part of a larger program that involves communication between different components or services.
 	go func() {
 		for {
 			select {
@@ -139,11 +149,41 @@ func NewRPCClient(serviceName, clientID string, bus MessageBus, opts ...ClientOp
 	return c, nil
 }
 
+// This function creates a new RPC client with streams.
 func NewRPCClientWithStreams(serviceName, clientID string, bus MessageBus, opts ...ClientOption) (*RPCClient, error) {
 	opts = append([]ClientOption{withStreams()}, opts...)
 	return NewRPCClient(serviceName, clientID, bus, opts...)
 }
 
+// The RPCClient type represents a client for making remote procedure calls.
+// @property {clientOpts}  - - `clientOpts`: a struct containing options for the RPC client
+// @property {MessageBus} bus - The `bus` property is a `MessageBus` object that represents the message
+// bus used by the RPC client to communicate with the RPC server. The message bus is responsible for
+// transmitting messages between the client and server.
+// @property {string} serviceName - The name of the remote service that the RPC client is communicating
+// with.
+// @property {string} id - The `id` property is a unique identifier for the RPC client instance. It is
+// used to distinguish between multiple clients connected to the same message bus and to route
+// responses and streams back to the correct client.
+// @property mu - The `mu` property is a `sync.RWMutex` type, which is a mutual exclusion lock that is
+// used to protect shared resources from concurrent access. It allows multiple readers or a single
+// writer to access the resource at the same time, but not both a reader and a writer simultaneously.
+// In
+// @property claimRequests - A map that stores channels for each claim request made by the client. The
+// key is a string representing the claim request ID and the value is a channel that will receive the
+// response for that claim request.
+// @property responseChannels - The `responseChannels` property is a map that stores channels for
+// receiving responses from the RPC server. The keys of the map are unique identifiers for each RPC
+// call, and the values are channels that will receive the response when it is available. This allows
+// the client to make asynchronous RPC calls and receive the
+// @property streamChannels - `streamChannels` is a map that stores channels for receiving streaming
+// responses from the RPC server. Each channel is associated with a unique stream ID. When a streaming
+// response is received from the server, it is sent to the corresponding channel for processing by the
+// client. This allows the client to handle streaming responses
+// @property closed - The `closed` property is a channel used to signal when the RPC client has been
+// closed and all associated resources have been cleaned up. It is of type `chan struct{}` which is a
+// channel that does not carry any data, but is used for synchronization purposes. When the channel is
+// closed,
 type RPCClient struct {
 	clientOpts
 
