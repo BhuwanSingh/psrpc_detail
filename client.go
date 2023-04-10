@@ -197,6 +197,10 @@ type RPCClient struct {
 	closed           chan struct{}
 }
 
+// The below code is defining a method called `Close()` for a type `RPCClient`. This method checks if
+// the `closed` channel of the `RPCClient` instance is already closed or not. If it is not closed, then
+// it closes the channel by calling the `close()` function. The `select` statement is used to avoid
+// blocking if the channel is already closed.
 func (c *RPCClient) Close() {
 	select {
 	case <-c.closed:
@@ -205,6 +209,8 @@ func (c *RPCClient) Close() {
 	}
 }
 
+// This is a function for making a single RPC request with various options and hooks, and handling the
+// response and errors.
 func RequestSingle[ResponseType proto.Message](
 	ctx context.Context,
 	c *RPCClient,
@@ -215,6 +221,10 @@ func RequestSingle[ResponseType proto.Message](
 	opts ...RequestOption,
 ) (response ResponseType, err error) {
 
+	// The below code is creating a variable `info` of type `RPCInfo` and initializing its fields
+	// `Service`, `Method`, and `Topic` with values `c.serviceName`, `rpc`, and `topic` respectively. It
+	// is likely part of a larger program that involves remote procedure calls (RPCs) and messaging
+	// topics.
 	info := RPCInfo{
 		Service: c.serviceName,
 		Method:  rpc,
