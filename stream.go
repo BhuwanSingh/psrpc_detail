@@ -231,8 +231,16 @@ type streamImpl[SendType, RecvType proto.Message] struct {
 	closed      atomic.Bool
 }
 
+// The below code is a method in a Go struct that handles incoming messages on a stream. It switches on
+// the type of message received and performs different actions accordingly.
 func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error {
 	switch b := is.Body.(type) {
+	// The above code is a case statement in a Go program that handles a specific type of message received
+	// on a stream. It first acquires a lock on a mutex to ensure thread safety. It then checks if there
+	// is an entry in a map called "acks" with the key equal to the request ID of the received message. If
+	// there is, it retrieves the corresponding value (a channel) and removes the entry from the map. It
+	// then releases the lock on the mutex. Finally, if the entry was found, it closes the channel. This
+	// code is likely part of a larger program that uses channels
 	case *internal.Stream_Ack:
 		s.mu.Lock()
 		ack, ok := s.acks[is.RequestId]
@@ -243,6 +251,12 @@ func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error
 			close(ack)
 		}
 
+	// The above code is a case statement in a Go program that handles a message received on a stream. It
+	// first checks if the stream is closed and returns an error if it is. It then increments a counter
+	// for pending messages and defers decrementing it until the end of the function. The payload of the
+	// message is deserialized using a function specified by the RecvType variable. If there is an error
+	// during deserialization, it is wrapped in a custom error and the stream is closed using an
+	// interceptor. If there is no error, the payload is passed to the interceptor's Recv method. The
 	case *internal.Stream_Message:
 		if s.closed.Load() {
 			return ErrStreamClosed
@@ -268,6 +282,11 @@ func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error
 			return err
 		}
 
+	// The above code is a case statement in a Go program that handles the `internal.Stream_Close`
+	// message. It checks if the stream is already closed and if not, it sets the `closed` flag to true,
+	// sets the error if there is one, closes the adapter, cancels the context, and closes the receive
+	// channel. This code is likely part of a larger program that manages streams and handles various
+	// messages related to stream management.
 	case *internal.Stream_Close:
 		if !s.closed.Swap(true) {
 			s.mu.Lock()
