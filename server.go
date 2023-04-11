@@ -13,10 +13,39 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+// The above type defines an interface for a RPC handler with a method to close the handler.
+// @property close - "close" is a method signature that belongs to an interface called "rpcHandler".
+// The method takes a boolean parameter called "force" and has no return value. This interface is
+// likely used in a larger program to define the behavior of objects that handle remote procedure calls
+// (RPCs).
 type rpcHandler interface {
 	close(force bool)
 }
 
+// The RPCServer type represents a server that handles remote procedure calls and manages handlers for
+// those calls.
+// @property {serverOpts}  - - `serverOpts`: a struct containing various options for configuring the
+// RPC server.
+// @property {MessageBus} bus - The `bus` property is a `MessageBus` object that is used for
+// communication between different components of the RPC server. It is likely used to send and receive
+// messages between the server and its clients.
+// @property {string} serviceName - The `serviceName` property is a string that represents the name of
+// the RPC service. It is used to identify the service and distinguish it from other services that may
+// be running on the same server.
+// @property {string} id - The `id` property is a unique identifier for the RPC server instance.
+// @property mu - The `mu` property is a `sync.RWMutex` type, which is a mutual exclusion lock that can
+// be used to protect shared resources from concurrent access. It provides a way to allow multiple
+// readers or a single writer to access a resource at the same time, while preventing multiple writers
+// from accessing
+// @property handlers - `handlers` is a map that stores the RPC handlers for the server. The keys of
+// the map are the names of the RPC methods, and the values are the corresponding handler functions
+// that will be executed when the method is called.
+// @property active - The `active` property is an `atomic.Int32` variable that keeps track of the
+// number of active RPC connections to the server. It is used to determine when the server can safely
+// shut down.
+// @property shutdown - `shutdown` is a channel used to signal the RPC server to shut down gracefully.
+// When a value is sent to this channel, the server will stop accepting new requests and will wait for
+// any active requests to complete before shutting down completely.
 type RPCServer struct {
 	serverOpts
 

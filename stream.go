@@ -9,9 +9,29 @@ import (
 	"go.uber.org/atomic"
 	"google.golang.org/protobuf/proto"
 
+	// The `"github.com/livekit/psrpc/internal"` package is being imported in order to access internal
+	// implementation details of the `psrpc` package. It is not intended for use by external users of the
+	// `psrpc` package.
 	"github.com/livekit/psrpc/internal"
 )
 
+// The Stream type is an interface that defines methods for sending and receiving messages over a
+// channel, as well as closing the stream and accessing its context and error.
+// @property Channel - The Channel method returns a receive-only channel of the type RecvType. This
+// channel can be used to receive messages of type RecvType from the stream.
+// @property {error} Send - Send is a method that sends a message of type SendType over the stream. It
+// takes an optional list of StreamOption arguments that can be used to modify the behavior of the
+// stream. If the message cannot be sent, an error is returned.
+// @property {error} Close - The `Close` method is used to close the stream and indicate the reason for
+// closure by passing an error as the `cause` parameter. This method should be called when the stream
+// is no longer needed or when an error occurs that requires the stream to be closed. Once the stream
+// is closed, no
+// @property Context - The `Context()` method returns the context associated with the stream. This
+// context can be used to carry deadlines, cancellation signals, and other request-scoped values across
+// API boundaries and between processes. It is a way to pass request-scoped values, such as
+// authentication credentials and tracing metadata, across API boundaries
+// @property {error} Err - The `Err()` method returns the error that caused the stream to close, if
+// any. If the stream is still open or was closed without an error, it returns `nil`.
 type Stream[SendType, RecvType proto.Message] interface {
 	Channel() <-chan RecvType
 	Send(msg SendType, opts ...StreamOption) error
@@ -20,25 +40,49 @@ type Stream[SendType, RecvType proto.Message] interface {
 	Err() error
 }
 
+// The ServerStream interface defines a streaming protocol with the ability to hijack the connection.
+// @property Hijack - Hijack is a method that allows the caller to take over the underlying network
+// connection of the server stream. This can be useful in certain scenarios where the caller needs more
+// control over the connection, such as implementing custom load balancing or routing logic. Once the
+// connection is hijacked, the server stream can
 type ServerStream[SendType, RecvType proto.Message] interface {
 	Stream[SendType, RecvType]
 	Hijack()
 }
 
+// The below type defines a client stream interface with generic types for sending and receiving
+// messages.
 type ClientStream[SendType, RecvType proto.Message] interface {
 	Stream[SendType, RecvType]
 }
 
+// The streamAdapter interface defines methods for sending and closing a stream.
+// @property {error} send - send is a method that takes a context and a pointer to an internal Stream
+// object as input and returns an error. It is used to send a stream message to a recipient.
+// @property close - `close` is a method that takes a `streamID` as input and is responsible for
+// closing the corresponding stream. It is not specified what happens when a stream is closed, but it
+// is likely that any resources associated with the stream are released and any pending messages are
+// discarded.
 type streamAdapter interface {
 	send(ctx context.Context, msg *internal.Stream) error
 	close(streamID string)
 }
 
+// The type clientStream represents a client stream for an RPC client in Go.
+// @property c - c is a pointer to an RPCClient struct, which likely represents a client that can make
+// remote procedure calls to a server.
+// @property {RPCInfo} info - The `info` property is of type `RPCInfo` and is a struct that contains
+// information about the remote procedure call (RPC) being made, such as the name of the method being
+// called, the arguments being passed, and any metadata associated with the call.
 type clientStream struct {
 	c    *RPCClient
 	info RPCInfo
 }
 
+// This function is used to send a stream message to a recipient. It takes a context and a pointer to
+// an internal Stream object as input and returns an error. It uses the `bus.Publish` method to publish
+// the message to a channel that is specific to the service, method, and topic being called. If an
+// error occurs during the publishing process, it returns a new error with the `Internal` error code.
 func (s *clientStream) send(ctx context.Context, msg *internal.Stream) (err error) {
 	if err = s.c.bus.Publish(ctx, getStreamServerChannel(s.c.serviceName, s.info.Method, s.info.Topic), msg); err != nil {
 		err = NewError(Internal, err)
@@ -46,18 +90,36 @@ func (s *clientStream) send(ctx context.Context, msg *internal.Stream) (err erro
 	return
 }
 
+// This function is used to close a client stream identified by the given `streamID`. It acquires a
+// lock on the `streamChannels` map of the `RPCClient` struct pointed to by `s.c`, deletes the entry
+// corresponding to the given `streamID`, and releases the lock. This ensures that the `streamChannels`
+// map is accessed in a thread-safe manner.
 func (s *clientStream) close(streamID string) {
 	s.c.mu.Lock()
 	delete(s.c.streamChannels, streamID)
 	s.c.mu.Unlock()
 }
 
+// The serverStream type is a generic struct used for handling streaming RPC requests and responses in
+// a Go RPC server.
+// @property h - h is a pointer to an instance of the streamRPCHandlerImpl struct, which is a type that
+// handles the stream RPC requests and responses for a specific message type. It contains methods for
+// sending and receiving messages over the stream.
+// @property {string} nodeID - The nodeID property is a string that represents the unique identifier of
+// the node that the server stream is associated with. This identifier is typically used to route
+// messages and requests to the correct node in a distributed system.
 type serverStream[SendType, RecvType proto.Message] struct {
 	h      *streamRPCHandlerImpl[SendType, RecvType]
 	s      *RPCServer
 	nodeID string
 }
 
+// `func (s *serverStream[RequestType, ResponseType]) send(ctx context.Context, msg *internal.Stream)
+// (err error)` is a method of the `serverStream` type. It is used to send a stream message to a
+// recipient by publishing the message to a channel that is specific to the service and node ID being
+// called. It takes a context and a pointer to an internal Stream object as input and returns an error.
+// If an error occurs during the publishing process, it returns a new error with the `Internal` error
+// code.
 func (s *serverStream[RequestType, ResponseType]) send(ctx context.Context, msg *internal.Stream) (err error) {
 	if err = s.s.bus.Publish(ctx, getStreamChannel(s.s.serviceName, s.nodeID), msg); err != nil {
 		err = NewError(Internal, err)
@@ -65,28 +127,94 @@ func (s *serverStream[RequestType, ResponseType]) send(ctx context.Context, msg 
 	return
 }
 
+// The below code is defining a method called `close` for a `serverStream` struct with generic types
+// `RequestType` and `ResponseType`. This method takes a `streamID` parameter and removes the
+// corresponding stream from the `streams` map in the `serverStream`'s `h` field. The `h` field is
+// assumed to be a struct that contains a `mu` field, which is a mutex used to synchronize access to
+// the `streams` map.
 func (s *serverStream[RequestType, ResponseType]) close(streamID string) {
 	s.h.mu.Lock()
 	delete(s.h.streams, streamID)
 	s.h.mu.Unlock()
 }
 
+// The type is a generic stream interceptor root that extends a stream implementation.
+// @property {streamImpl}  - This is a struct definition in Go programming language. It defines a type
+// `streamInterceptorRoot` which has two generic type parameters `SendType` and `RecvType` and one
+// non-generic type parameter `proto.Message`.
 type streamInterceptorRoot[SendType, RecvType proto.Message] struct {
 	*streamImpl[SendType, RecvType]
 }
 
+// The below code is defining a method called `Recv` for a struct `streamInterceptorRoot` with generic
+// types `SendType` and `RecvType`. The method takes a parameter `msg` of type `proto.Message` and
+// returns an error. The method calls the `recv` function with the `msg` parameter and returns the
+// result.
 func (h *streamInterceptorRoot[SendType, RecvType]) Recv(msg proto.Message) error {
 	return h.recv(msg)
 }
 
+// The below code is defining a method called `Send` for a struct `streamInterceptorRoot` with generic
+// types `SendType` and `RecvType`. The method takes a `proto.Message` and optional `StreamOption`
+// arguments and returns an error. The implementation of the method simply calls the `send` method of
+// the `streamInterceptorRoot` struct with the provided message.
 func (h *streamInterceptorRoot[SendType, RecvType]) Send(msg proto.Message, opts ...StreamOption) error {
 	return h.send(msg)
 }
 
+// The below code is defining a method called `Close` for a struct type `streamInterceptorRoot` with
+// generic types `SendType` and `RecvType`. The method takes an error `cause` as input and returns an
+// error. The method calls another method `close` with the `cause` error as input and returns the
+// result of that method call.
 func (h *streamInterceptorRoot[SendType, RecvType]) Close(cause error) error {
 	return h.close(cause)
 }
 
+// This is a struct type for a stream implementation in Go with various fields for managing the stream.
+// @property {streamOpts}  - - `streamImpl` is a struct type.
+// @property {streamAdapter} adapter - The adapter is a component that handles the low-level details of
+// sending and receiving data over the network. It abstracts away the underlying transport protocol and
+// provides a simple interface for sending and receiving messages. The streamImpl struct uses an
+// adapter to communicate with the remote endpoint.
+// @property {StreamInterceptor} interceptor - The `interceptor` property is a function that can be
+// used to intercept and modify the behavior of the stream. It takes in a `context.Context` and a
+// `RecvType` as input parameters and returns a `RecvType` and an `error`. It can be used to add
+// additional functionality
+// @property ctx - The context.Context object is used to carry deadlines, cancellation signals, and
+// other request-scoped values across API boundaries and between processes. It allows for the
+// propagation of request-scoped values across multiple API calls and allows for the cancellation of
+// requests and associated resources. In this case, it is used to manage
+// @property cancelCtx - The `cancelCtx` property is a function that can be called to cancel the
+// context associated with the stream. This is useful for stopping any ongoing operations associated
+// with the stream, such as sending or receiving messages.
+// @property recvChan - `recvChan` is a channel used to receive messages of type `RecvType` from the
+// stream. It is likely used in conjunction with the `adapter` and `interceptor` to handle incoming
+// messages and perform any necessary processing or validation. The channel is likely buffered to allow
+// for multiple messages to
+// @property {string} streamID - The streamID property is a string that represents the unique
+// identifier for the stream. It is used to identify the stream when sending and receiving messages.
+// @property mu - The `mu` property is a `sync.Mutex` type variable used for synchronization purposes.
+// It is used to ensure that only one goroutine can access the critical section of code at a time,
+// preventing race conditions and ensuring thread safety. In this case, it is likely used to protect
+// access to shared
+// @property {bool} hijacked - The "hijacked" property is a boolean flag that indicates whether the
+// stream has been hijacked or not. In the context of network programming, hijacking refers to taking
+// control of a connection or stream that was originally intended for a different purpose. In this
+// case, it likely refers to a situation
+// @property pending - `pending` is an `atomic.Int32` variable that keeps track of the number of
+// pending messages in the stream. It is incremented when a message is sent and decremented when a
+// message is received or an error occurs. This variable is useful for flow control and for determining
+// when the stream is idle
+// @property acks - `acks` is a map that stores channels used for acknowledging messages received on
+// the stream. When a message is received, the corresponding channel is signaled to indicate that the
+// message has been processed. This is typically used in scenarios where the sender needs to ensure
+// that the receiver has processed a message before sending the
+// @property {error} err - `err` is a property of the `streamImpl` struct which is used to store any
+// error that occurs during the stream's operation. It can be accessed and modified by the methods of
+// the struct to handle errors and propagate them to the caller.
+// @property closed - `closed` is a boolean flag that indicates whether the stream has been closed or
+// not. It is implemented as an atomic boolean to ensure thread-safety. When the stream is closed, this
+// flag is set to true and all subsequent operations on the stream will fail.
 type streamImpl[SendType, RecvType proto.Message] struct {
 	streamOpts
 	adapter     streamAdapter
