@@ -435,6 +435,11 @@ func (s *streamImpl[SendType, RecvType]) send(msg proto.Message, opts ...StreamO
 	// to be executed when the surrounding function returns.
 	defer s.pending.Dec()
 
+	// The above code is assigning the result of a function call to a variable named "o". The function
+	// being called is "getStreamOpts" and it takes two arguments: "s.streamOpts" and "opts...". The
+	// "opts..." syntax is used to pass a variable number of arguments to the function. The purpose of
+	// this code is to retrieve the stream options for a given stream and any additional options that may
+	// have been passed as arguments.
 	o := getStreamOpts(s.streamOpts, opts...)
 
 	b, a, err := serializePayload(msg)
