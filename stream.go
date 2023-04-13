@@ -235,7 +235,7 @@ type streamImpl[SendType, RecvType proto.Message] struct {
 // the type of message received and performs different actions accordingly.
 func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error {
 	switch b := is.Body.(type) {
-	// The above code is a case statement in a Go program that handles a specific type of message received
+	// The below code is a case statement in a Go program that handles a specific type of message received
 	// on a stream. It first acquires a lock on a mutex to ensure thread safety. It then checks if there
 	// is an entry in a map called "acks" with the key equal to the request ID of the received message. If
 	// there is, it retrieves the corresponding value (a channel) and removes the entry from the map. It
@@ -251,7 +251,7 @@ func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error
 			close(ack)
 		}
 
-	// The above code is a case statement in a Go program that handles a message received on a stream. It
+	// The below code is a case statement in a Go program that handles a message received on a stream. It
 	// first checks if the stream is closed and returns an error if it is. It then increments a counter
 	// for pending messages and defers decrementing it until the end of the function. The payload of the
 	// message is deserialized using a function specified by the RecvType variable. If there is an error
@@ -282,7 +282,7 @@ func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error
 			return err
 		}
 
-	// The above code is a case statement in a Go program that handles the `internal.Stream_Close`
+	// The below code is a case statement in a Go program that handles the `internal.Stream_Close`
 	// message. It checks if the stream is already closed and if not, it sets the `closed` flag to true,
 	// sets the error if there is one, closes the adapter, cancels the context, and closes the receive
 	// channel. This code is likely part of a larger program that manages streams and handles various
@@ -302,6 +302,10 @@ func (s *streamImpl[SendType, RecvType]) handleStream(is *internal.Stream) error
 	return nil
 }
 
+// The below code is a method implementation in Go language for receiving messages of type `RecvType`
+// in a stream. It uses a channel `recvChan` to receive the message and returns an error
+// `ErrSlowConsumer` if the channel is blocked due to a slow consumer. The method takes a parameter
+// `msg` of type `proto.Message` which is type asserted to `RecvType`.
 func (s *streamImpl[SendType, RecvType]) recv(msg proto.Message) error {
 	select {
 	case s.recvChan <- msg.(RecvType):
@@ -311,12 +315,20 @@ func (s *streamImpl[SendType, RecvType]) recv(msg proto.Message) error {
 	return nil
 }
 
+// The below code is defining a method called `waitForPending()` for a struct called `streamImpl` with
+// two generic types `SendType` and `RecvType`. This method waits for any pending operations to
+// complete by checking the value of a `pending` variable (which is likely a counter) until it reaches
+// zero. It does this by repeatedly sleeping for 100 milliseconds until the pending count is zero.
 func (s *streamImpl[SendType, RecvType]) waitForPending() {
 	for s.pending.Load() > 0 {
 		time.Sleep(time.Millisecond * 100)
 	}
 }
 
+// The below code is implementing the `ack` method for a `streamImpl` struct in Go. This method sends
+// an acknowledgement message to the server using the `adapter` object's `send` method. The
+// acknowledgement message contains the `StreamId`, `RequestId`, `SentAt`, and `Expiry` fields from the
+// original `Stream` object, and an empty `StreamAck` object in the `Body` field.
 func (s *streamImpl[SendType, RecvType]) ack(ctx context.Context, is *internal.Stream) error {
 	return s.adapter.send(ctx, &internal.Stream{
 		StreamId:  is.StreamId,
@@ -329,6 +341,12 @@ func (s *streamImpl[SendType, RecvType]) ack(ctx context.Context, is *internal.S
 	})
 }
 
+// The below code is implementing the `close` method for a stream in Go. It first checks if the stream
+// is already closed and returns an error if it is. Then, it sets the error cause for the stream and
+// creates a message to send to the adapter indicating that the stream is closed. The message includes
+// an error code and message if the cause is an `Error` type. The method then sends the message to the
+// adapter, waits for any pending requests to complete, closes the stream adapter, cancels the context,
+// and closes the receive channel. Finally, it returns any error that occurred while
 func (s *streamImpl[RequestType, ResponseType]) close(cause error) error {
 	if s.closed.Swap(true) {
 		return ErrStreamClosed
@@ -338,11 +356,27 @@ func (s *streamImpl[RequestType, ResponseType]) close(cause error) error {
 		cause = ErrStreamClosed
 	}
 
+	// The below code is acquiring a lock on a mutex object `s.mu`. This is a synchronization mechanism
+	// used in Go to prevent multiple goroutines from accessing shared resources simultaneously. Once the
+	// lock is acquired, any other goroutine that tries to acquire the same lock will be blocked until the
+	// lock is released.
 	s.mu.Lock()
+	// The below code is assigning the value of the variable `cause` to the `err` field of the struct `s`.
 	s.err = cause
+	// The below code is releasing the lock on a mutex (short for mutual exclusion) in Go. Mutexes are
+	// used to synchronize access to shared resources in concurrent programming to prevent race
+	// conditions. The `Unlock()` method is used to release the lock on the mutex after it has been
+	// acquired with the `Lock()` method.
 	s.mu.Unlock()
 
+	// The below code is declaring a variable `msg` of type `*internal.StreamClose`, which is a pointer to
+	// a struct named `StreamClose` defined in the `internal` package. The `&` operator is used to get the
+	// memory address of the newly created `StreamClose` struct and assign it to the `msg` variable.
 	msg := &internal.StreamClose{}
+	// The below code is checking if the `cause` error implements the `Error` interface and if it does, it
+	// extracts the error message and error code from it and assigns them to `msg.Error` and `msg.Code`
+	// respectively. If the `cause` error does not implement the `Error` interface, it assigns the error
+	// message to `msg.Error` and assigns the `Unknown` error code to `msg.Code`.
 	var e Error
 	if errors.As(cause, &e) {
 		msg.Error = e.Error()
@@ -352,7 +386,12 @@ func (s *streamImpl[RequestType, ResponseType]) close(cause error) error {
 		msg.Code = string(Unknown)
 	}
 
+	// The below code in Go is getting the current date and time and storing it in the variable `now`.
 	now := time.Now()
+	// The below code is sending a message to a stream using the `send` method of an adapter. The message
+	// being sent is a `Stream_Close` message with the content of `msg`. The message is being sent with a
+	// specific `StreamId`, `RequestId`, `SentAt` timestamp, and `Expiry` timestamp. The `timeout` value
+	// is also being used to calculate the `Expiry` timestamp.
 	err := s.adapter.send(context.Background(), &internal.Stream{
 		StreamId:  s.streamID,
 		RequestId: newRequestID(),
@@ -363,16 +402,37 @@ func (s *streamImpl[RequestType, ResponseType]) close(cause error) error {
 		},
 	})
 
+	// The below code is calling a method `waitForPending()` on an object `s`. It is likely that
+	// `waitForPending()` is a method that waits for any pending tasks or operations to complete before
+	// proceeding with the rest of the code. The purpose of this code is to ensure that all pending tasks
+	// are completed before continuing with the execution of the program.
 	s.waitForPending()
+	// The below code is closing a stream with the given `streamID` using the `close` method of the
+	// `adapter` object. It is likely part of a larger program or function that manages network
+	// connections or data streams.
 	s.adapter.close(s.streamID)
+	// The below code is calling the `cancelCtx()` method on an object named `s`. This method is likely
+	// used to cancel a context in Go, which is a way to manage the lifecycle of a request or operation.
+	// By calling `cancelCtx()`, the context is cancelled and any associated resources can be cleaned up.
 	s.cancelCtx()
+	// The below code is closing the channel `s.recvChan`. This means that no more values can be sent on
+	// the channel and any attempt to do so will result in a panic.
 	close(s.recvChan)
 
 	return err
 }
 
+// The below code is a method implementation in Go that sends a message over a stream. It serializes
+// the message payload, creates a request ID, sets a deadline for the request, and sends the message
+// using an adapter. It then waits for an acknowledgement from the receiver or for a timeout to occur.
+// If an acknowledgement is received, the method returns without error. If a timeout or other error
+// occurs, an error is returned.
 func (s *streamImpl[SendType, RecvType]) send(msg proto.Message, opts ...StreamOption) (err error) {
+	// The below code is incrementing the value of a variable called `pending` by 1. The `Inc()` method is
+	// likely a method of a struct or type that has a field called `pending`.
 	s.pending.Inc()
+	// The below code is using the `defer` keyword in Go to schedule a function call to `s.pending.Dec()`
+	// to be executed when the surrounding function returns.
 	defer s.pending.Dec()
 
 	o := getStreamOpts(s.streamOpts, opts...)
