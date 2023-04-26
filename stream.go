@@ -435,26 +435,53 @@ func (s *streamImpl[SendType, RecvType]) send(msg proto.Message, opts ...StreamO
 	// to be executed when the surrounding function returns.
 	defer s.pending.Dec()
 
-	// The above code is assigning the result of a function call to a variable named "o". The function
+	// The below code is assigning the result of a function call to a variable named "o". The function
 	// being called is "getStreamOpts" and it takes two arguments: "s.streamOpts" and "opts...". The
 	// "opts..." syntax is used to pass a variable number of arguments to the function. The purpose of
 	// this code is to retrieve the stream options for a given stream and any additional options that may
 	// have been passed as arguments.
 	o := getStreamOpts(s.streamOpts, opts...)
 
+	// The below code is declaring three variables `b`, `a`, and `err` and assigning them the values
+	// returned by the function `serializePayload(msg)`. The function is likely serializing a message
+	// `msg` into a byte array `b` and an integer `a`, and returning an error `err` if there was a problem
+	// with the serialization process.
 	b, a, err := serializePayload(msg)
+	// The code is checking if the error variable is not nil. If it is not nil, it creates a new error
+	// with a specific error code (MalformedRequest) and the original error as its cause. The function
+	// then returns without doing anything else.
 	if err != nil {
 		err = NewError(MalformedRequest, err)
 		return
 	}
 
+	// The above code is creating an unbuffered channel of type `struct{}` and assigning it to the
+	// variable `ackChan`. This channel can be used for synchronization between goroutines, where one
+	// goroutine can wait for another goroutine to signal that it has completed a task by sending a value
+	// on this channel.
 	ackChan := make(chan struct{})
+	// The above code is creating a new variable `requestID` and assigning it the value returned by the
+	// function `newRequestID()`. The purpose of the `newRequestID()` function is not shown in the given
+	// code snippet.
 	requestID := newRequestID()
 
+	// The above code is acquiring a lock on a mutex object `s.mu`. This is a synchronization mechanism
+	// used in Go to prevent multiple goroutines from accessing shared resources simultaneously. Once the
+	// lock is acquired, any other goroutine that tries to acquire the same lock will be blocked until the
+	// lock is released.
 	s.mu.Lock()
+	// The above code is assigning a channel `ackChan` to a map `s.acks` with a key `requestID`. This is
+	// likely part of a larger program that uses channels for communication between goroutines.
 	s.acks[requestID] = ackChan
+	// The above code is releasing the lock on a mutex (short for mutual exclusion) in Go programming
+	// language. The `mu` variable is likely an instance of the `sync.Mutex` type, which is used to
+	// synchronize access to shared resources in concurrent programs. The `Unlock()` method is called on
+	// the mutex to release the lock, allowing other goroutines to acquire the lock and access the shared
+	// resource.
 	s.mu.Unlock()
 
+	// The above code is using a `defer` statement to create a function literal that will be executed when
+	// the surrounding function returns.
 	defer func() {
 		s.mu.Lock()
 		delete(s.acks, requestID)
@@ -462,6 +489,9 @@ func (s *streamImpl[SendType, RecvType]) send(msg proto.Message, opts ...StreamO
 	}()
 
 	now := time.Now()
+	// The above code is creating a new variable `deadline` and assigning it the value of the current time
+	// (`now`) plus the value of `o.timeout`. This is likely being used to set a deadline or timeout for
+	// some operation.
 	deadline := now.Add(o.timeout)
 
 	ctx, cancel := context.WithDeadline(s.ctx, deadline)
